@@ -1,0 +1,205 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(uuid()) @db.Uuid
+  cognito_sub       String   @unique @db.Uuid
+  first_name        String
+  middle_name       String?
+  last_name         String
+  email             String   @unique
+  phone_number      String?
+  timezone          String
+  last_login        DateTime
+  profile_image_url String?
+  is_active         Boolean  @default(false)
+  is_setup_complete Boolean  @default(false)
+  created_at        DateTime @default(now()) @db.Timestamptz(3)
+  modified_at       DateTime @updatedAt @db.Timestamptz(3)
+  created_by        String?  @db.Uuid
+  modified_by       String?  @db.Uuid
+
+  roles           UserRole[] // One user can have many roles
+  userVehicles    UserVehicle[]
+  serviceAccounts UserServiceAccount[]
+
+  @@map("users")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  role_name   String   @unique
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  modified_at DateTime @updatedAt @db.Timestamptz(3)
+  created_by  String?  @db.Uuid
+  modified_by String?  @db.Uuid
+
+  userRoles       UserRole[] // One role can be assigned to many users
+  rolePermissions RolePermission[] // One role can have many permissions
+
+  @@map("roles")
+}
+
+enum PermissionType {
+  DESKTOP
+  APP
+}
+
+model Permission {
+  id              Int            @id @default(autoincrement())
+  permission_name String
+  description     String?
+  category_id     Int
+  permission_type PermissionType
+  created_at      DateTime       @default(now())
+  modified_at     DateTime       @updatedAt
+  created_by      String?        @db.Uuid
+  modified_by     String?        @db.Uuid
+
+  category        PermissionCategory @relation(fields: [category_id], references: [id])
+  rolePermissions RolePermission[] // One permission can be assigned to many roles
+
+  @@unique([permission_name, permission_type])
+  @@map("permissions")
+}
+
+model PermissionCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  modified_at DateTime @updatedAt @db.Timestamptz(3)
+  created_by  String?  @db.Uuid
+  modified_by String?  @db.Uuid
+
+  permissions Permission[]
+
+  @@map("permission_categories")
+}
+
+model UserRole {
+  user_id     String   @db.Uuid
+  role_id     Int
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  created_by  String?  @db.Uuid
+  modified_at DateTime @updatedAt @db.Timestamptz(3)
+  modified_by String?  @db.Uuid
+
+  user User @relation(fields: [user_id], references: [id])
+  role Role @relation(fields: [role_id], references: [id])
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  role_id       Int
+  permission_id Int
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  created_by    String?  @db.Uuid
+  modified_at   DateTime @updatedAt @db.Timestamptz(3)
+  modified_by   String?  @db.Uuid
+
+  role       Role       @relation(fields: [role_id], references: [id])
+  permission Permission @relation(fields: [permission_id], references: [id])
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model TermsAndConditions {
+  id          Int      @id @default(autoincrement())
+  content     Json
+  version     Int      @unique
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  modified_at DateTime @updatedAt @db.Timestamptz(3)
+
+  @@map("terms_and_conditions")
+}
+
+model Vehicle {
+  id          Int      @id @default(autoincrement())
+  make        String
+  model       String
+  year        String
+  created_at  DateTime @default(now()) @db.Timestamptz(3)
+  modified_at DateTime @updatedAt @db.Timestamptz(3)
+
+  userVehicles UserVehicle[]
+
+  @@unique([make, model, year])
+  @@map("vehicles")
+}
+
+model UserVehicle {
+  id         Int      @id @default(autoincrement())
+  user_id    String   @db.Uuid
+  vehicle_id Int
+  created_at DateTime @default(now()) @db.Timestamptz(3)
+
+  user    User    @relation(fields: [user_id], references: [id])
+  vehicle Vehicle @relation(fields: [vehicle_id], references: [id])
+
+  @@map("user_vehicles")
+}
+
+// service account
+model ServiceAccount {
+  id            String   @id @default(uuid()) @db.Uuid
+  property_name String
+  company_name  String?
+  property_type String // e.g., commercial, residential
+  code          Int      @default(autoincrement())
+  created_by    String  @db.Uuid
+  modified_by   String  @db.Uuid
+  created_at    DateTime @default(now()) @db.Timestamptz(3)
+  modified_at   DateTime @updatedAt @db.Timestamptz(3)
+
+  address_id String  @db.Uuid
+  address    Address @relation(fields: [address_id], references: [id])
+
+  userServiceAccounts UserServiceAccount[] // Multiple users can be linked to one service account
+
+  @@map("service_accounts")
+}
+
+model UserServiceAccount {
+  user_id            String   @db.Uuid
+  service_account_id String   @db.Uuid
+  created_by        String  @db.Uuid
+  created_at        DateTime @default(now()) @db.Timestamptz(3)
+
+  user           User           @relation(fields: [user_id], references: [id])
+  serviceAccount ServiceAccount @relation(fields: [service_account_id], references: [id])
+
+  @@id([user_id, service_account_id])
+  @@map("user_service_accounts")
+}
+
+model Address {
+  id             String   @id @default(uuid()) @db.Uuid
+  street_address String
+  city           String
+  state          String
+  postal_code    String
+  country        String
+  latitude       Float?
+  longitude      Float?
+  type           String // e.g., billing, mailing
+  created_by     String  @db.Uuid
+  modified_by    String  @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  modified_at    DateTime @updatedAt @db.Timestamptz(3)
+
+  serviceAccounts ServiceAccount[] // An address can be linked to many service accounts
+
+  @@map("addresses")
+}

@@ -1,0 +1,58 @@
+image: node:20.12.2
+
+stages:
+  - build
+  - lint-and-test
+  - code-coverage
+  - deploy
+
+variables:
+  DATABASE_URL: $DATABASE_URL # TODO: Move this to GitLab CI/CD Variables for security
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - npm install
+
+build_job:
+  stage: build
+  script:
+    - npm run prisma:generate
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+      - node_modules/.prisma
+
+lint_job:
+  stage: lint-and-test
+  script:
+    - npm run lint
+
+test_job:
+  stage: lint-and-test
+  script:
+    - npm run test
+
+coverage_job:
+  stage: code-coverage
+  script:
+    - npm run test:coverage
+  coverage: /All files[^\|]*\|[^\|]*\s+([\d\.]+)/
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+# deploy_job:
+#   stage: deploy
+#   script:
+#     - echo "Deploying to production..."
+#   only:
+#     - main
+#   when: manual # Manual approval step for deployment
+#   artifacts:
+#     paths:
+#       - dist/

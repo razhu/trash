@@ -1,0 +1,7 @@
+{
+  "*.ts": ["npm run lint:fix", "npm run prettier:fix"],
+  "*.json": ["npm run prettier:fix"],
+  "*.{xml,yml,yaml}": ["npm run prettier:fix"],
+  "*.{md,markdown}": ["npm run prettier:fix"],
+  "*.prisma": ["npm run prisma:format"]
+}

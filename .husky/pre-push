@@ -1,0 +1,1 @@
+git diff HEAD --quiet && npm run test:coverage && echo 'All tests passed! Ready to push.' || { echo 'Tests failed or there are uncommitted changes. Please resolve them before pushing.'; exit 1; }
